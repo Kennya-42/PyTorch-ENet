@@ -27,8 +27,8 @@ def get_arguments():
         "--batch-size",
         "-b",
         type=int,
-        default=10,
-        help="The batch size. Default: 10")
+        default=4,
+        help="The batch size. Default: 4")
     parser.add_argument(
         "--epochs",
         type=int,
@@ -62,8 +62,8 @@ def get_arguments():
     parser.add_argument(
         "--dataset",
         choices=['camvid', 'cityscapes'],
-        default='camvid',
-        help="Dataset to use. Default: camvid")
+        default='cityscapes',
+        help="Dataset to use. Default: cityscapes")
     parser.add_argument(
         "--dataset-dir",
         type=str,
@@ -73,12 +73,12 @@ def get_arguments():
     parser.add_argument(
         "--height",
         type=int,
-        default=360,
+        default=512,
         help="The image height. Default: 360")
     parser.add_argument(
         "--width",
         type=int,
-        default=480,
+        default=1024,
         help="The image height. Default: 480")
     parser.add_argument(
         "--weighing",
@@ -96,7 +96,7 @@ def get_arguments():
     parser.add_argument(
         "--workers",
         type=int,
-        default=4,
+        default=8,
         help="Number of subprocesses to use for data loading. Default: 4")
     parser.add_argument(
         "--print-step",

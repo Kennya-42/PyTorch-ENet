@@ -52,12 +52,13 @@ class Test():
             loss = self.criterion(outputs, labels)
 
             # Keep track of loss for current epoch
-            epoch_loss += loss.data[0]
+            # epoch_loss += loss.data[0]
+            epoch_loss += loss.item()
 
             # Keep track of evaluation the metric
             self.metric.add(outputs.data, labels.data)
 
             if iteration_loss:
-                print("[Step: %d] Iteration loss: %.4f" % (step, loss.data[0]))
+                print("[Step: %d] Iteration loss: %.4f" % (step, loss.item()))
 
         return epoch_loss / len(self.data_loader), self.metric.value()

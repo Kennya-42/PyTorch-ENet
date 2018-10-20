@@ -143,7 +143,7 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     # Intialize ENet
     model = ENet(num_classes)
     # Check if the network architecture is correct
-    print(model)
+    #print(model)
 
     # We are going to use the CrossEntropyLoss loss function as it's most
     # frequentely used in classification problems with multiple classes which
@@ -186,12 +186,12 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     train = Train(model, train_loader, optimizer, criterion, metric, use_cuda)
     val = Test(model, val_loader, criterion, metric, use_cuda)
     for epoch in range(start_epoch, args.epochs):
-        print(">>>> [Epoch: {0:d}] Training".format(epoch))
+        print(">> [Epoch: {0:d}] Training".format(epoch))
 
         lr_updater.step()
         epoch_loss, (iou, miou) = train.run_epoch(args.print_step)
 
-        print(">>>> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".
+        print(">> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".
               format(epoch, epoch_loss, miou))
 
         if (epoch + 1) % 10 == 0 or epoch + 1 == args.epochs:
@@ -314,10 +314,7 @@ if __name__ == '__main__':
         if use_cuda:
             model = model.cuda()
 
-        # Initialize a optimizer just so we can retrieve the model from the
-        # checkpoint
         optimizer = optim.Adam(model.parameters())
-
         # Load the previoulsy saved model state to the ENet model
         model = utils.load_checkpoint(model, optimizer, args.save_dir,
                                       args.name)[0]
