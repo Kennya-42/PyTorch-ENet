@@ -98,7 +98,7 @@ def load_dataset(dataset):
         images, labels = iter(train_loader).next()
     print("Image size:", images.size())
     print("Label size:", labels.size())
-    print("Class-color encoding:", class_encoding)
+    # print("Class-color encoding:", class_encoding)
 
     # Show a batch of samples and labels
     if args.imshow_batch:

@@ -1,4 +1,5 @@
 from torch.autograd import Variable
+import torch
 
 
 class Test():
@@ -35,30 +36,32 @@ class Test():
         """
         epoch_loss = 0.0
         self.metric.reset()
-        for step, batch_data in enumerate(self.data_loader):
-            # Get the inputs and labels
-            inputs, labels = batch_data
+        self.model.eval()
+        with torch.no_grad():
+            for step, batch_data in enumerate(self.data_loader):
+                # Get the inputs and labels
+                inputs, labels = batch_data
 
-            # Wrap them in a Varaible
-            inputs, labels = Variable(inputs), Variable(labels)
-            if self.use_cuda:
-                inputs = inputs.cuda()
-                labels = labels.cuda()
+                # Wrap them in a Varaible
+                inputs, labels = Variable(inputs), Variable(labels)
+                if self.use_cuda:
+                    inputs = inputs.cuda()
+                    labels = labels.cuda()
 
-            # Forward propagation
-            outputs = self.model(inputs)
+                # Forward propagation
+                outputs = self.model(inputs)
 
-            # Loss computation
-            loss = self.criterion(outputs, labels)
+                # Loss computation
+                loss = self.criterion(outputs, labels)
 
-            # Keep track of loss for current epoch
-            # epoch_loss += loss.data[0]
-            epoch_loss += loss.item()
+                # Keep track of loss for current epoch
+                # epoch_loss += loss.data[0]
+                epoch_loss += loss.item()
 
-            # Keep track of evaluation the metric
-            self.metric.add(outputs.data, labels.data)
+                # Keep track of evaluation the metric
+                self.metric.add(outputs.data, labels.data)
 
-            if iteration_loss:
-                print("[Step: %d] Iteration loss: %.4f" % (step, loss.item()))
+                if iteration_loss:
+                    print("[Step: %d] Iteration loss: %.4f" % (step, loss.item()))
 
         return epoch_loss / len(self.data_loader), self.metric.value()

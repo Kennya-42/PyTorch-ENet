@@ -37,6 +37,7 @@ class Train():
         """
         epoch_loss = 0.0
         self.metric.reset()
+        self.model.train()
         for step, batch_data in enumerate(self.data_loader):
             # Get the inputs and labels
             inputs, labels = batch_data
