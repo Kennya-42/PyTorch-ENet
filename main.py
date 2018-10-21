@@ -1,5 +1,5 @@
 import os
-
+from skimage import io
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,7 +7,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from torch.autograd import Variable
-
+import numpy as np
 import transforms as ext_transforms
 from models.enet import ENet
 from train import Train
@@ -16,6 +16,7 @@ from metric.iou import IoU
 from args import get_arguments
 from data.utils import enet_weighing, median_freq_balancing
 import utils
+from PIL import Image
 
 # Get the arguments
 args = get_arguments()
@@ -24,7 +25,7 @@ use_cuda = args.cuda and torch.cuda.is_available()
 
 
 def load_dataset(dataset):
-    print("\nLoading dataset...\n")
+    print("\nLoading dataset...")
 
     print("Selected dataset:", args.dataset)
     print("Dataset directory:", args.dataset_dir)
@@ -94,21 +95,23 @@ def load_dataset(dataset):
     # Get a batch of samples to display
     if args.mode.lower() == 'test':
         images, labels = iter(test_loader).next()
+        print(images.size())
+        # images, labels = iter(train_loader).next()
     else:
         images, labels = iter(train_loader).next()
     print("Image size:", images.size())
     print("Label size:", labels.size())
-    print("Class-color encoding:", class_encoding)
+    # print("Class-color encoding:", class_encoding)
 
     # Show a batch of samples and labels
-    if args.imshow_batch:
-        print("Close the figure window to continue...")
-        label_to_rgb = transforms.Compose([
-            ext_transforms.LongTensorToRGBPIL(class_encoding),
-            transforms.ToTensor()
-        ])
-        color_labels = utils.batch_transform(labels, label_to_rgb)
-        utils.imshow_batch(images, color_labels)
+    # if args.imshow_batch:
+    #     print("Close the figure window to continue...")
+    #     label_to_rgb = transforms.Compose([
+    #         ext_transforms.LongTensorToRGBPIL(class_encoding),
+    #         transforms.ToTensor()
+    #     ])
+    #     color_labels = utils.batch_transform(labels, label_to_rgb)
+    #     utils.imshow_batch(images, color_labels)
 
     # Get class weights from the selected weighing technique
     print("\nWeighing technique:", args.weighing)
@@ -310,6 +313,7 @@ if __name__ == '__main__':
     elif args.mode.lower() == 'test':
         # Intialize a new ENet model
         num_classes = len(class_encoding)
+        print(num_classes)
         model = ENet(num_classes)
         if use_cuda:
             model = model.cuda()
@@ -318,8 +322,26 @@ if __name__ == '__main__':
         # Load the previoulsy saved model state to the ENet model
         model = utils.load_checkpoint(model, optimizer, args.save_dir,
                                       args.name)[0]
-        print(model)
-        test(model, test_loader, w_class, class_encoding)
+                                  
+        # print(model)
+        # test(model, test_loader, w_class, class_encoding)
+        
+        img = Image.open("spring_sentinel_cloudy_0.jpg")
+        images = transforms.ToTensor()(img)
+        torch.reshape(images, (1, 3, 360, 600))
+        print(images.size())
+        images= images.unsqueeze(0)
+        print(images.size())
+        #(4, 3, 512, 1024)
+        images = Variable(images)
+        images = images.cuda()
+        predictions = model(images) 
+        _, predictions = torch.max(predictions.data, 1)
+
+        label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
+        color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
+        utils.imshow_batch(images.data.cpu(), color_predictions)
+        print('finished')
     else:
         # Should never happen...but just in case it does
         raise RuntimeError(
