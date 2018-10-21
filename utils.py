@@ -36,8 +36,8 @@ def imshow_batch(images, labels):
     """
 
     # Make a grid with the images and labels and convert it to numpy
-    images = torchvision.utils.make_grid(images).numpy()
-    labels = torchvision.utils.make_grid(labels).numpy()
+    images = (torchvision.utils.make_grid(images).numpy()*255).astype(np.uint8)
+    labels = (torchvision.utils.make_grid(labels).numpy()*255).astype(np.uint8)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(15, 7))
     ax1.imshow(np.transpose(images, (1, 2, 0)))

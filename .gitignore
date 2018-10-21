@@ -107,3 +107,6 @@ venv.bak/
 # Sublime text project
 *.sublime-workspace
 *.sublime-project
+.vscode
+*.jpg
+*.png

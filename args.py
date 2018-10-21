@@ -67,7 +67,7 @@ def get_arguments():
     parser.add_argument(
         "--dataset-dir",
         type=str,
-        default="data/CamVid",
+        default="/home/ken/Documents/Dataset/",
         help="Path to the root directory of the selected dataset. "
         "Default: data/CamVid")
     parser.add_argument(
