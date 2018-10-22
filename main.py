@@ -18,6 +18,8 @@ from data.utils import enet_weighing, median_freq_balancing
 import utils
 from PIL import Image
 from collections import OrderedDict
+import math
+import time
 
 # Get the arguments
 args = get_arguments()
@@ -61,7 +63,6 @@ if __name__ == '__main__':
     
     # Intialize a new ENet model
     num_classes = len(class_encoding)
-    print(num_classes)
     model = ENet(num_classes)
     if use_cuda:
         model = model.cuda()
@@ -70,16 +71,28 @@ if __name__ == '__main__':
     # Load the previoulsy saved model state to the ENet model
     model = utils.load_checkpoint(model, optimizer, args.save_dir, args.name)[0]
 
-    img = Image.open("winter_sentinel_sunny_1229.jpg")
-    img = img.resize((1024, 512), Image.ANTIALIAS)
+    img = Image.open("spring_sentinel_cloudy_0.jpg")
+    # width, height = img.size
+    # m = -0.5
+    # xshift = height+20#abs(m) * width
+    # new_height = height + int(round(height))
+    # img = img.transform((width, height), Image.AFFINE,(math.cos(0),math.sin(0),0,-math.sin(0),math.cos(math.pi/3),0,0,0,1), Image.BICUBIC)
+    start = time.time()
+    # img = img.resize((1024, 512), Image.ANTIALIAS)
     images = transforms.ToTensor()(img)
-    torch.reshape(images, (1, 3, 512, 1024))
+    torch.reshape(images, (1, 3, 360, 600))
     images= images.unsqueeze(0)
-    images = Variable(images)
-    images = images.cuda()
-    predictions = model(images) 
-    _, predictions = torch.max(predictions.data, 1)
-    label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
-    color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
-    utils.imshow_batch(images.data.cpu(), color_predictions)
+    with torch.no_grad():
+        images = Variable(images)
+        images = images.cuda()
+        
+        predictions = model(images) 
+        end = time.time()
+        print(1/(end - start),"FPS")
+        _, predictions = torch.max(predictions.data, 1)
+        label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
+        color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
+        end = time.time()
+        print(1/(end - start),"FPS")
+        # utils.imshow_batch(images.data.cpu(), color_predictions)
     
