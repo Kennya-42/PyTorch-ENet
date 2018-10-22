@@ -1,0 +1,25 @@
+ARGUMENTS
+batch_size: 20
+cuda: store_false
+dataset: cityscapes
+dataset_dir: /home/ken/Documents/Dataset/
+epochs: 80
+height: 360
+ignore_unlabeled: True
+imshow_batch: False
+learning_rate: 0.0005
+lr_decay: 0.1
+lr_decay_epochs: 100
+mode: train
+name: ENet
+print_step: False
+resume: False
+save_dir: /home/ken/Documents/PyTorch-ENet/save/ENet_Rit
+weighing: ENet
+weight_decay: 0.0002
+width: 600
+workers: 8
+
+BEST VALIDATION
+Epoch: 40
+Mean IoU: 0.3883337662874807
