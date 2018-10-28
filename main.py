@@ -252,33 +252,15 @@ def predict(model, images, class_encoding):
     utils.imshow_batch(images.data.cpu(), color_predictions)
 
 def single():
-    img = Image.open("berlin_000000_000019_leftImg8bit.png").convert('RGB')
-    # img = Image.open("winter_sentinel_sunny_1229.jpg").convert('RGB')
+    # img = Image.open("berlin_000000_000019_leftImg8bit.png").convert('RGB')
+    img = Image.open("winter_sentinel_sunny_1229.jpg").convert('RGB')
     # img = Image.open("spring_sentinel_cloudy_0.jpg").convert('RGB')
     # img = Image.open("winter_sentinel_sunny_632.png").convert('RGB')
     class_encoding= color_encoding = OrderedDict([
             ('unlabeled', (0, 0, 0)),
             ('road', (128, 64, 128)),
-            ('sidewalk', (244, 35, 232))#,
-            # ('building', (70, 70, 70)),
-            # ('wall', (102, 102, 156)),
-            # ('fence', (190, 153, 153)),
-            # ('pole', (153, 153, 153)),
-            # ('traffic_light', (250, 170, 30)),
-            # ('traffic_sign', (220, 220, 0)),
-            # ('vegetation', (107, 142, 35)),
-            # ('terrain', (152, 251, 152)),
-            # ('sky', (70, 130, 180)),
-            # ('person', (220, 20, 60)),
-            # ('rider', (255, 0, 0)),
-            # ('car', (0, 0, 142)),
-            # ('truck', (0, 0, 70)),
-            # ('bus', (0, 60, 100)),
-            # ('train', (0, 80, 100)),
-            # ('motorcycle', (0, 0, 230)),
-            # ('bicycle', (119, 11, 32))
+            ('sidewalk', (244, 35, 232))
     ])
-
     # Intialize a new ENet model
     num_classes = len(class_encoding)
     model = ENet(num_classes)

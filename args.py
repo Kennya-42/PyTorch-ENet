@@ -1,12 +1,8 @@
 from argparse import ArgumentParser
-#python3 main.py -m single --save-dir /home/ken/Documents/PyTorch-ENet/save/ENet_Rit --dataset-dir /home/ken/Documents/Dataset/ --epochs 100  --imshow-batch
 
 def get_arguments():
-    """Defines command-line arguments, and parses them.
-
-    """
+    """Defines command-line arguments, and parses them."""
     parser = ArgumentParser()
-
     # Execution mode
     parser.add_argument(
         "--mode",
@@ -38,17 +34,17 @@ def get_arguments():
         "--learning-rate",
         "-lr",
         type=float,
-        default=0.005,
+        default=0.01,
         help="The learning rate. Default: 5e-4")
     parser.add_argument(
         "--lr-decay",
         type=float,
-        default=0,
+        default=0.2,
         help="The learning rate decay factor. Default: 0.5")
     parser.add_argument(
         "--lr-decay-epochs",
         type=int,
-        default=100,
+        default=50,
         help="The number of epochs before adjusting the learning rate. "
         "Default: 100")
     parser.add_argument(
