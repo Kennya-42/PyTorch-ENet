@@ -1,5 +1,4 @@
 import os
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -7,7 +6,7 @@ import torch.optim.lr_scheduler as lr_scheduler
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from torch.autograd import Variable
-
+from collections import OrderedDict
 import transforms as ext_transforms
 from models.enet import ENet
 from train import Train
@@ -16,16 +15,16 @@ from metric.iou import IoU
 from args import get_arguments
 from data.utils import enet_weighing, median_freq_balancing
 import utils
+from PIL import Image
+import time
+import numpy as np
 
 # Get the arguments
 args = get_arguments()
-
 use_cuda = args.cuda and torch.cuda.is_available()
-
 
 def load_dataset(dataset):
     print("\nLoading dataset...\n")
-
     print("Selected dataset:", args.dataset)
     print("Dataset directory:", args.dataset_dir)
     print("Save directory:", args.save_dir)
@@ -34,7 +33,7 @@ def load_dataset(dataset):
         [transforms.Resize((args.height, args.width)),
          transforms.ToTensor()])
 
-    label_transform = transforms.Compose([
+    label_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
         transforms.Resize((args.height, args.width)),
         ext_transforms.PILToLongTensor()
     ])
@@ -77,20 +76,12 @@ def load_dataset(dataset):
 
     # Get encoding between pixel valus in label images and RGB colors
     class_encoding = train_set.color_encoding
-
-    # Remove the road_marking class from the CamVid dataset as it's merged
-    # with the road class
-    if args.dataset.lower() == 'camvid':
-        del class_encoding['road_marking']
-
     # Get number of classes to predict
     num_classes = len(class_encoding)
-
     # Print information for debugging
     print("Number of classes to predict:", num_classes)
     print("Train dataset size:", len(train_set))
     print("Validation dataset size:", len(val_set))
-
     # Get a batch of samples to display
     if args.mode.lower() == 'test':
         images, labels = iter(test_loader).next()
@@ -98,10 +89,9 @@ def load_dataset(dataset):
         images, labels = iter(train_loader).next()
     print("Image size:", images.size())
     print("Label size:", labels.size())
-    # print("Class-color encoding:", class_encoding)
 
     # Show a batch of samples and labels
-    if args.imshow_batch:
+    if args.imshow_batch and False:
         print("Close the figure window to continue...")
         label_to_rgb = transforms.Compose([
             ext_transforms.LongTensorToRGBPIL(class_encoding),
@@ -111,10 +101,10 @@ def load_dataset(dataset):
         utils.imshow_batch(images, color_labels)
 
     # Get class weights from the selected weighing technique
-    print("\nWeighing technique:", args.weighing)
+    print("Weighing technique:", args.weighing)
     print("Computing class weights...")
-    print("(this can take a while depending on the dataset size)")
     class_weights = 0
+    # class_weights = np.array([3.5071, 1.8638])
     if args.weighing.lower() == 'enet':
         class_weights = enet_weighing(train_loader, num_classes)
     elif args.weighing.lower() == 'mfb':
@@ -143,8 +133,6 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     # Intialize ENet
     model = ENet(num_classes)
     # Check if the network architecture is correct
-    #print(model)
-
     # We are going to use the CrossEntropyLoss loss function as it's most
     # frequentely used in classification problems with multiple classes which
     # fits the problem. This criterion  combines LogSoftMax and NLLLoss.
@@ -180,36 +168,26 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     else:
         start_epoch = 0
         best_miou = 0
-
     # Start Training
-    print()
     train = Train(model, train_loader, optimizer, criterion, metric, use_cuda)
     val = Test(model, val_loader, criterion, metric, use_cuda)
     for epoch in range(start_epoch, args.epochs):
         print(">> [Epoch: {0:d}] Training".format(epoch))
-
         lr_updater.step()
         epoch_loss, (iou, miou) = train.run_epoch(args.print_step)
-
-        print(">> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".
-              format(epoch, epoch_loss, miou))
-
-        if (epoch + 1) % 10 == 0 or epoch + 1 == args.epochs:
+        print(">> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".format(epoch, epoch_loss, miou))
+        #preform a validation test
+        if (epoch + 1) % 4 == 0 or epoch + 1 == args.epochs:
             print(">>>> [Epoch: {0:d}] Validation".format(epoch))
-
             loss, (iou, miou) = val.run_epoch(args.print_step)
-
-            print(">>>> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".
-                  format(epoch, loss, miou))
-
+            print(">>>> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".format(epoch, loss, miou))
             # Print per class IoU on last epoch or if best iou
             if epoch + 1 == args.epochs or miou > best_miou:
                 for key, class_iou in zip(class_encoding.keys(), iou):
                     print("{0}: {1:.4f}".format(key, class_iou))
-
             # Save the model if it's the best thus far
             if miou > best_miou:
-                print("\nBest model thus far. Saving...\n")
+                print("Best model thus far. Saving...")
                 best_miou = miou
                 utils.save_checkpoint(model, optimizer, epoch + 1, best_miou,
                                       args)
@@ -261,14 +239,11 @@ def predict(model, images, class_encoding):
     images = Variable(images)
     if use_cuda:
         images = images.cuda()
-
     # Make predictions!
     predictions = model(images)
-
     # Predictions is one-hot encoded with "num_classes" channels.
     # Convert it to a single int using the indices where the maximum (1) occurs
     _, predictions = torch.max(predictions.data, 1)
-
     label_to_rgb = transforms.Compose([
         ext_transforms.LongTensorToRGBPIL(class_encoding),
         transforms.ToTensor()
@@ -276,52 +251,95 @@ def predict(model, images, class_encoding):
     color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
     utils.imshow_batch(images.data.cpu(), color_predictions)
 
+def single():
+    img = Image.open("berlin_000000_000019_leftImg8bit.png").convert('RGB')
+    # img = Image.open("winter_sentinel_sunny_1229.jpg").convert('RGB')
+    # img = Image.open("spring_sentinel_cloudy_0.jpg").convert('RGB')
+    # img = Image.open("winter_sentinel_sunny_632.png").convert('RGB')
+    class_encoding= color_encoding = OrderedDict([
+            ('unlabeled', (0, 0, 0)),
+            ('road', (128, 64, 128)),
+            ('sidewalk', (244, 35, 232))#,
+            # ('building', (70, 70, 70)),
+            # ('wall', (102, 102, 156)),
+            # ('fence', (190, 153, 153)),
+            # ('pole', (153, 153, 153)),
+            # ('traffic_light', (250, 170, 30)),
+            # ('traffic_sign', (220, 220, 0)),
+            # ('vegetation', (107, 142, 35)),
+            # ('terrain', (152, 251, 152)),
+            # ('sky', (70, 130, 180)),
+            # ('person', (220, 20, 60)),
+            # ('rider', (255, 0, 0)),
+            # ('car', (0, 0, 142)),
+            # ('truck', (0, 0, 70)),
+            # ('bus', (0, 60, 100)),
+            # ('train', (0, 80, 100)),
+            # ('motorcycle', (0, 0, 230)),
+            # ('bicycle', (119, 11, 32))
+    ])
 
-# Run only if this module is being run directly
+    # Intialize a new ENet model
+    num_classes = len(class_encoding)
+    model = ENet(num_classes)
+    model = model.cuda()
+    optimizer = optim.Adam(model.parameters())
+    # Load the previoulsy saved model state to the ENet model
+    model = utils.load_checkpoint(model, optimizer, args.save_dir, args.name)[0]
+    img = img.resize((600, 360), Image.ANTIALIAS)
+    start = time.time()
+    images = transforms.ToTensor()(img)
+    torch.reshape(images, (1, 3, 360, 600))
+    images= images.unsqueeze(0)
+    with torch.no_grad():
+        images = Variable(images)
+        images = images.cuda()
+        predictions = model(images) 
+        end = time.time()
+        print(int(1/(end - start)),"FPS")
+        _, predictions = torch.max(predictions.data, 1)
+        label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
+        color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
+        end = time.time()
+        print(int(1/(end - start)),"FPS")
+        utils.imshow_batch(images.data.cpu(), color_predictions)
+
 if __name__ == '__main__':
-
-    # Fail fast if the dataset directory doesn't exist
-    assert os.path.isdir(
-        args.dataset_dir), "The directory \"{0}\" doesn't exist.".format(
-            args.dataset_dir)
-
-    # Fail fast if the saving directory doesn't exist
-    assert os.path.isdir(
-        args.save_dir), "The directory \"{0}\" doesn't exist.".format(
-            args.save_dir)
-
-    # Import the requested dataset
-    if args.dataset.lower() == 'camvid':
-        from data import CamVid as dataset
-    elif args.dataset.lower() == 'cityscapes':
-        from data import Cityscapes as dataset
+    if args.mode.lower() == 'single':
+        single()
     else:
-        # Should never happen...but just in case it does
-        raise RuntimeError("\"{0}\" is not a supported dataset.".format(
-            args.dataset))
+        # Fail fast if the saving directory doesn't exist
+        assert os.path.isdir(
+            args.dataset_dir), "The directory \"{0}\" doesn't exist.".format(args.dataset_dir)
+        assert os.path.isdir(
+            args.save_dir), "The directory \"{0}\" doesn't exist.".format(args.save_dir)
+        # Import the requested dataset
+        if args.dataset.lower() == 'camvid':
+            from data import CamVid as dataset
+        elif args.dataset.lower() == 'cityscapes':
+            from data import Cityscapes as dataset
+        elif args.dataset.lower() == 'ritscapes':
+            from data import Ritscapes as dataset
+        else:
+            raise RuntimeError("\"{0}\" is not a supported dataset.".format(
+                args.dataset))
+        
+        loaders, w_class, class_encoding = load_dataset(dataset)
+        train_loader, val_loader, test_loader = loaders
 
-    loaders, w_class, class_encoding = load_dataset(dataset)
-    train_loader, val_loader, test_loader = loaders
-
-    if args.mode.lower() in {'train', 'full'}:
-        model = train(train_loader, val_loader, w_class, class_encoding)
-        if args.mode.lower() == 'full':
+        if args.mode.lower() in {'train', 'full'}:
+            model = train(train_loader, val_loader, w_class, class_encoding)
+            if args.mode.lower() == 'full':
+                test(model, test_loader, w_class, class_encoding)
+        elif args.mode.lower() == 'test':
+            num_classes = len(class_encoding)
+            model = ENet(num_classes)
+            if use_cuda:
+                model = model.cuda()
+            optimizer = optim.Adam(model.parameters())
+            model = utils.load_checkpoint(model, optimizer, args.save_dir, args.name)[0]
             test(model, test_loader, w_class, class_encoding)
-    elif args.mode.lower() == 'test':
-        # Intialize a new ENet model
-        num_classes = len(class_encoding)
-        model = ENet(num_classes)
-        if use_cuda:
-            model = model.cuda()
-
-        optimizer = optim.Adam(model.parameters())
-        # Load the previoulsy saved model state to the ENet model
-        model = utils.load_checkpoint(model, optimizer, args.save_dir,
-                                      args.name)[0]
-        print(model)
-        test(model, test_loader, w_class, class_encoding)
-    else:
-        # Should never happen...but just in case it does
-        raise RuntimeError(
-            "\"{0}\" is not a valid choice for execution mode.".format(
-                args.mode))
+        else:
+            raise RuntimeError(
+                "\"{0}\" is not a valid choice for execution mode.".format(
+                    args.mode))

@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-
+#python3 main.py -m single --save-dir /home/ken/Documents/PyTorch-ENet/save/ENet_Rit --dataset-dir /home/ken/Documents/Dataset/ --epochs 100  --imshow-batch
 
 def get_arguments():
     """Defines command-line arguments, and parses them.
@@ -11,7 +11,7 @@ def get_arguments():
     parser.add_argument(
         "--mode",
         "-m",
-        choices=['train', 'test', 'full'],
+        choices=['train', 'test', 'full','single'],
         default='train',
         help=("train: performs training and validation; test: tests the model "
               "found in \"--save_dir\" with name \"--name\" on \"--dataset\"; "
@@ -27,7 +27,7 @@ def get_arguments():
         "--batch-size",
         "-b",
         type=int,
-        default=4,
+        default=18,
         help="The batch size. Default: 4")
     parser.add_argument(
         "--epochs",
@@ -38,12 +38,12 @@ def get_arguments():
         "--learning-rate",
         "-lr",
         type=float,
-        default=5e-4,
+        default=0.005,
         help="The learning rate. Default: 5e-4")
     parser.add_argument(
         "--lr-decay",
         type=float,
-        default=0.1,
+        default=0,
         help="The learning rate decay factor. Default: 0.5")
     parser.add_argument(
         "--lr-decay-epochs",
@@ -55,13 +55,13 @@ def get_arguments():
         "--weight-decay",
         "-wd",
         type=float,
-        default=2e-4,
+        default=0.0002,
         help="L2 regularization factor. Default: 2e-4")
 
     # Dataset
     parser.add_argument(
         "--dataset",
-        choices=['camvid', 'cityscapes'],
+        choices=['camvid', 'cityscapes','ritscapes'],
         default='cityscapes',
         help="Dataset to use. Default: cityscapes")
     parser.add_argument(
@@ -73,12 +73,12 @@ def get_arguments():
     parser.add_argument(
         "--height",
         type=int,
-        default=512,
+        default=360,
         help="The image height. Default: 360")
     parser.add_argument(
         "--width",
         type=int,
-        default=1024,
+        default=600,
         help="The image height. Default: 480")
     parser.add_argument(
         "--weighing",

@@ -37,6 +37,8 @@ class PILToLongTensor(object):
 
         # Reshape tensor
         nchannel = len(pic.mode)
+        if(nchannel != 1):
+            print("img is not greyscale")
         img = img.view(pic.size[1], pic.size[0], nchannel)
 
         # Convert to long and squeeze the channels
