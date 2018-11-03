@@ -1,0 +1,11 @@
+RESOLUTION 360 x 600
+All Classes------------------------------
+ENET Model  | Cityscapes | RIT |
+ENet_base   | 0.4938     |
+Two Classes{safe,unsafe}-----------------
+ENET Model  | Cityscapes | RIT |
+ENet_base   | 0.0000     |
+Three Classes{unlabeled,Road,Sidewalk}---
+ENET Model  | Cityscapes | RIT |
+ENet_base   | 0.0000     |
+

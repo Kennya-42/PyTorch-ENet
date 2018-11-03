@@ -73,7 +73,7 @@ def save_checkpoint(model, optimizer, epoch, miou, args):
         summary_file.write("Epoch: {0}\n". format(epoch))
         summary_file.write("Mean IoU: {0}\n". format(miou))
 
-def load_checkpoint(model, optimizer, folder_dir, filename):
+def load_checkpoint(model, optimizer, folder_dir, filename,reset_optimizer=False):
     """Saves the model in a specified directory with a specified name.save
     Keyword arguments:
     - model (``nn.Module``): The stored model state is copied to this model
@@ -96,7 +96,8 @@ def load_checkpoint(model, optimizer, folder_dir, filename):
     # Load the stored model parameters to the model instance
     checkpoint = torch.load(model_path)
     model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
+    if not reset_optimizer:
+        optimizer.load_state_dict(checkpoint['optimizer'])
     epoch = checkpoint['epoch']
     miou = checkpoint['miou']
     return model, optimizer, epoch, miou

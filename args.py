@@ -23,28 +23,28 @@ def get_arguments():
         "--batch-size",
         "-b",
         type=int,
-        default=18,
+        default=10,
         help="The batch size. Default: 4")
     parser.add_argument(
         "--epochs",
         type=int,
-        default=300,
+        default=500,
         help="Number of training epochs. Default: 300")
     parser.add_argument(
         "--learning-rate",
         "-lr",
         type=float,
-        default=0.01,
+        default=0.0005,
         help="The learning rate. Default: 5e-4")
     parser.add_argument(
         "--lr-decay",
         type=float,
-        default=0.2,
+        default=0.1,
         help="The learning rate decay factor. Default: 0.5")
     parser.add_argument(
         "--lr-decay-epochs",
         type=int,
-        default=50,
+        default=100,
         help="The number of epochs before adjusting the learning rate. "
         "Default: 100")
     parser.add_argument(
@@ -53,7 +53,16 @@ def get_arguments():
         type=float,
         default=0.0002,
         help="L2 regularization factor. Default: 2e-4")
-
+    parser.add_argument(
+        "--train_encoder",
+        dest='train_encoder',
+        action='store_true',
+        help="Train the encoder alone.")
+    parser.add_argument(
+        "--reset-optimizer",
+        dest='reset-optimizer',
+        action='store_true',
+        help="Reset optimizer to train encoder and decoder.")
     # Dataset
     parser.add_argument(
         "--dataset",
@@ -63,9 +72,9 @@ def get_arguments():
     parser.add_argument(
         "--dataset-dir",
         type=str,
-        default="data/CamVid",
+        default="/home/ken/Documents/Dataset/",
         help="Path to the root directory of the selected dataset. "
-        "Default: data/CamVid")
+        "Default: /home/ken/Documents/Dataset/")
     parser.add_argument(
         "--height",
         type=int,
@@ -75,11 +84,11 @@ def get_arguments():
         "--width",
         type=int,
         default=600,
-        help="The image height. Default: 480")
+        help="The image height. Default: 600")
     parser.add_argument(
         "--weighing",
         choices=['enet', 'mfb', 'none'],
-        default='ENet',
+        default='enet',
         help="The class weighing technique to apply to the dataset. "
         "Default: enet")
     parser.add_argument(
@@ -92,7 +101,7 @@ def get_arguments():
     parser.add_argument(
         "--workers",
         type=int,
-        default=8,
+        default=4,
         help="Number of subprocesses to use for data loading. Default: 4")
     parser.add_argument(
         "--print-step",

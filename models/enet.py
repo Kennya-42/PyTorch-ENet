@@ -27,13 +27,7 @@ class InitialBlock(nn.Module):
 
     """
 
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 kernel_size=3,
-                 padding=0,
-                 bias=False,
-                 relu=True):
+    def __init__(self,in_channels, out_channels, kernel_size=3, padding=0, bias=False, relu=True):
         super().__init__()
 
         if relu:
@@ -64,13 +58,10 @@ class InitialBlock(nn.Module):
     def forward(self, x):
         main = self.main_branch(x)
         ext = self.ext_branch(x)
-
         # Concatenate branches
         out = torch.cat((main, ext), 1)
-
         # Apply batch normalization
         out = self.batch_norm(out)
-
         return self.out_prelu(out)
 
 
@@ -112,16 +103,8 @@ class RegularBottleneck(nn.Module):
 
     """
 
-    def __init__(self,
-                 channels,
-                 internal_ratio=4,
-                 kernel_size=3,
-                 padding=0,
-                 dilation=1,
-                 asymmetric=False,
-                 dropout_prob=0,
-                 bias=False,
-                 relu=True):
+    def __init__(self, channels, internal_ratio=4, kernel_size=3, padding=0, dilation=1, 
+                 asymmetric=False, dropout_prob=0, bias=False,relu=True):
         super().__init__()
 
         # Check in the internal_scale parameter is within the expected range
@@ -139,11 +122,9 @@ class RegularBottleneck(nn.Module):
             activation = nn.PReLU()
 
         # Main branch - shortcut connection
-
         # Extension branch - 1x1 convolution, followed by a regular, dilated or
         # asymmetric convolution, followed by another 1x1 convolution, and,
         # finally, a regularizer (spatial dropout). Number of channels is constant.
-
         # 1x1 projection convolution
         self.ext_conv1 = nn.Sequential(
             nn.Conv2d(
@@ -503,13 +484,7 @@ class ENet(nn.Module):
         self.initial_block = InitialBlock(3, 16, padding=1, relu=encoder_relu)
 
         # Stage 1 - Encoder
-        self.downsample1_0 = DownsamplingBottleneck(
-            16,
-            64,
-            padding=1,
-            return_indices=True,
-            dropout_prob=0.01,
-            relu=encoder_relu)
+        self.downsample1_0 = DownsamplingBottleneck(16,64,padding=1,return_indices=True,dropout_prob=0.01,relu=encoder_relu)
         self.regular1_1 = RegularBottleneck(
             64, padding=1, dropout_prob=0.01, relu=encoder_relu)
         self.regular1_2 = RegularBottleneck(
@@ -520,37 +495,19 @@ class ENet(nn.Module):
             64, padding=1, dropout_prob=0.01, relu=encoder_relu)
 
         # Stage 2 - Encoder
-        self.downsample2_0 = DownsamplingBottleneck(
-            64,
-            128,
-            padding=1,
-            return_indices=True,
-            dropout_prob=0.1,
-            relu=encoder_relu)
+        self.downsample2_0 = DownsamplingBottleneck(64,128,padding=1,return_indices=True,dropout_prob=0.1,relu=encoder_relu)
         self.regular2_1 = RegularBottleneck(
             128, padding=1, dropout_prob=0.1, relu=encoder_relu)
         self.dilated2_2 = RegularBottleneck(
             128, dilation=2, padding=2, dropout_prob=0.1, relu=encoder_relu)
-        self.asymmetric2_3 = RegularBottleneck(
-            128,
-            kernel_size=5,
-            padding=2,
-            asymmetric=True,
-            dropout_prob=0.1,
-            relu=encoder_relu)
+        self.asymmetric2_3 = RegularBottleneck(128,kernel_size=5,padding=2,asymmetric=True,dropout_prob=0.1,relu=encoder_relu)
         self.dilated2_4 = RegularBottleneck(
             128, dilation=4, padding=4, dropout_prob=0.1, relu=encoder_relu)
         self.regular2_5 = RegularBottleneck(
             128, padding=1, dropout_prob=0.1, relu=encoder_relu)
         self.dilated2_6 = RegularBottleneck(
             128, dilation=8, padding=8, dropout_prob=0.1, relu=encoder_relu)
-        self.asymmetric2_7 = RegularBottleneck(
-            128,
-            kernel_size=5,
-            asymmetric=True,
-            padding=2,
-            dropout_prob=0.1,
-            relu=encoder_relu)
+        self.asymmetric2_7 = RegularBottleneck(128,kernel_size=5,asymmetric=True,padding=2,dropout_prob=0.1,relu=encoder_relu)
         self.dilated2_8 = RegularBottleneck(
             128, dilation=16, padding=16, dropout_prob=0.1, relu=encoder_relu)
 
