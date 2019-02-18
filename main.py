@@ -19,6 +19,11 @@ import utils
 from PIL import Image
 import time
 import numpy as np
+from torchviz import make_dot, make_dot_from_trace
+import matplotlib.pyplot as plt
+import glob
+import cv2
+
 
 # Get the arguments
 args = get_arguments()
@@ -81,22 +86,7 @@ def load_dataset(dataset):
         images, labels = iter(train_loader).next()
     print("Image size:", images.size())
     print("Label size:", labels.size())
-    # r=0
-    # b=0
-    # g=0
-    # pix = 360*600*len(train_set)
-    # for step, batch_data in enumerate(train_loader):
-    #         inputs, labels = batch_data
-    #         images = inputs.numpy()
-    #         g += images[0,1,:,:].sum()/(360*600)
-    #         print(g)
-    #         break
-            # g += images[:,1,:,:].sum()/pix
-            # b += images[:,2,:,:].sum()/pix
-    # print(r) 
-    # print(g) 
-    # print(b) 
-    
+        
     # Show a batch of samples and labels
     # if args.imshow_batch and False:
     #     print("Close the figure window to continue...")
@@ -112,11 +102,13 @@ def load_dataset(dataset):
     print("Computing class weights...") 
     if args.weighing.lower() == 'enet':
         class_weights = enet_weighing(train_loader, num_classes)
-    elif args.weighing.lower() == 'mfb':
-        class_weights = median_freq_balancing(train_loader, num_classes)
-    else:
-        class_weights = None
-    # class_weights = np.array([3, 4, 5])
+    # elif args.weighing.lower() == 'mfb':
+    #     class_weights = median_freq_balancing(train_loader, num_classes)
+    # else:
+    #     class_weights = None
+    # class_weights = np.array([ 0.0000,  3.3464, 13.7190,  5.0791, 34.2439, 32.6783, 33.8608, 40.9005,
+    #     36.6919,  6.8414, 32.3367, 18.5942, 33.6811, 45.9701, 13.0529, 45.0612,
+    #     45.6751, 45.7100, 48.2612, 43.7108])
     if class_weights is not None:
         class_weights = torch.from_numpy(class_weights).float()
         # Set the weight of the unlabeled class to 0
@@ -125,9 +117,30 @@ def load_dataset(dataset):
             class_weights[ignore_index] = 0
     
     print("Class weights:", class_weights)
+    # Computer training set mean pixel
+    print("computing mean pixel...")
+    #pixel mean only works with batch size 1
+    #todo any batchsize...
+    # mean = torch.tensor([0.0, 0.0, 0.0])
+    # std = torch.tensor([0.0, 0.0, 0.0])
+    # for img, _ in train_loader:
+    #     std += img.view(3,-1).std(dim=1)
+    #     mean += img.view(3,-1).mean(dim=1)
+    # std = std/len(train_set)  
+    # mean = mean/len(train_set) 
+    #mean and std for cityscapes
+    # mean = torch.tensor([0.2869, 0.3251, 0.2839])
+    # std = torch.tensor([0.1738, 0.1786, 0.1756])
+    #mean and std for rit
+    mean = torch.tensor([0.4845, 0.4992, 0.4800])
+    std = torch.tensor([0.1833, 0.1880, 0.1947])
 
+    moments = (mean,std)
+    print("mean pixel:", mean)
+    print("std pixel:", std)
     return (train_loader, val_loader,
-            test_loader), class_weights, class_encoding
+            test_loader), class_weights, class_encoding , moments
+    
 
 
 def train(train_loader, val_loader, class_weights, class_encoding):
@@ -138,54 +151,14 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     # Check if the network architecture is correct
     # We are going to use the CrossEntropyLoss loss function as it's most
     # frequentely used in classification problems with multiple classes which
-    # fits the problem. This criterion  combines LogSoftMax and NLLLoss.
-    
+    # fits the problem. This criterion  combines LogSoftMax and NLLLoss.    
     criterion = nn.CrossEntropyLoss(weight=class_weights)
-    if args.train_encoder:
-        print('Training only the encoder')
-        encoder_params = []
-        encoder_params.extend(model.initial_block.parameters())
-        encoder_params.extend(model.downsample1_0.parameters())
-        encoder_params.extend(model.regular1_1.parameters())
-        encoder_params.extend(model.regular1_2.parameters())
-        encoder_params.extend(model.regular1_3.parameters())
-        encoder_params.extend(model.regular1_4.parameters())
 
-        encoder_params.extend(model.downsample2_0.parameters())
-        encoder_params.extend(model.regular2_1.parameters())
-        encoder_params.extend(model.dilated2_2.parameters())
-        encoder_params.extend(model.asymmetric2_3.parameters())
-        encoder_params.extend(model.dilated2_4.parameters())
-        encoder_params.extend(model.regular2_5.parameters())
-        encoder_params.extend(model.dilated2_6.parameters())
-        encoder_params.extend(model.asymmetric2_7.parameters())
-        encoder_params.extend(model.dilated2_8.parameters())
-
-        encoder_params.extend(model.regular3_0.parameters())
-        encoder_params.extend(model.dilated3_1.parameters())
-        encoder_params.extend(model.asymmetric3_2.parameters())
-        encoder_params.extend(model.dilated3_3.parameters())
-        encoder_params.extend(model.regular3_4.parameters())
-        encoder_params.extend(model.dilated3_5.parameters())
-        encoder_params.extend(model.asymmetric3_6.parameters())
-        encoder_params.extend(model.dilated3_7.parameters())
-        
-        i=0
-        for param in encoder_params:
-            i+=1
-        print('Number of Params: ',i)
-        i=0
-        for param in model.parameters():
-            i+=1
-            if i > 236:
-                param.requires_grad = False
-        optimizer = optim.Adam(encoder_params, lr=args.learning_rate, weight_decay=args.weight_decay)
-    else:
-        optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     # ENet authors used Adam as the optimizer
     
-    for param in model.parameters():
-        param.requires_grad = True
+    # for param in model.parameters():
+    #     param.requires_grad = True
     # Learning rate decay scheduler
     lr_updater = lr_scheduler.StepLR(optimizer, args.lr_decay_epochs, args.lr_decay)
 
@@ -209,19 +182,24 @@ def train(train_loader, val_loader, class_weights, class_encoding):
     else:
         start_epoch = 0
         best_miou = 0
+    
     # Start Training
     train = Train(model, train_loader, optimizer, criterion, metric, use_cuda)
     val = Test(model, val_loader, criterion, metric, use_cuda)
+    miou_dict = []
+    epoch_loss_dict = []
     for epoch in range(start_epoch, args.epochs):
         print(">> [Epoch: {0:d}] Training".format(epoch))
         lr_updater.step()
         epoch_loss, (iou, miou) = train.run_epoch(args.print_step)
         print(">> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".format(epoch, epoch_loss, miou))
         #preform a validation test
-        if (epoch + 1) % 4 == 0 or epoch + 1 == args.epochs:
+        if (epoch + 1) % 10 == 0 or epoch + 1 == args.epochs:
             print(">>>> [Epoch: {0:d}] Validation".format(epoch))
             loss, (iou, miou) = val.run_epoch(args.print_step)
             print(">>>> [Epoch: {0:d}] Avg. loss: {1:.4f} | Mean IoU: {2:.4f}".format(epoch, loss, miou))
+            epoch_loss_dict.append(loss)
+            miou_dict.append(miou)
             # Print per class IoU on last epoch or if best iou
             if epoch + 1 == args.epochs or miou > best_miou:
                 for key, class_iou in zip(class_encoding.keys(), iou):
@@ -233,7 +211,7 @@ def train(train_loader, val_loader, class_weights, class_encoding):
                 utils.save_checkpoint(model, optimizer, epoch + 1, best_miou,
                                       args)
 
-    return model
+    return model, epoch_loss_dict, miou_dict
 
 
 def test(model, test_loader, class_weights, class_encoding):
@@ -288,56 +266,83 @@ def predict(model, images, class_encoding):
     utils.imshow_batch(images.data.cpu(), color_predictions)
 
 def single():
-    img = Image.open("berlin_000000_000019_leftImg8bit.png").convert('RGB')
-    # img = Image.open("winter_sentinel_sunny_1229.jpg").convert('RGB')
-    # img = Image.open("spring_sentinel_cloudy_0.jpg").convert('RGB')
-    # img = Image.open("winter_sentinel_sunny_632.png").convert('RGB')
-    class_encoding = color_encoding = OrderedDict([
-            ('unlabeled', (0, 0, 0)),
-            ('road', (128, 64, 128)),
-            ('sidewalk', (244, 35, 232)),
-            ('building', (70, 70, 70)),
-            ('wall', (102, 102, 156)),
-            ('fence', (190, 153, 153)),
-            ('pole', (153, 153, 153)),
-            ('traffic_light', (250, 170, 30)),
-            ('traffic_sign', (220, 220, 0)),
-            ('vegetation', (107, 142, 35)),
-            ('terrain', (152, 251, 152)),
-            ('sky', (70, 130, 180)),
-            ('person', (220, 20, 60)),
-            ('rider', (255, 0, 0)),
-            ('car', (0, 0, 142)),
-            ('truck', (0, 0, 70)),
-            ('bus', (0, 60, 100)),
-            ('train', (0, 80, 100)),
-            ('motorcycle', (0, 0, 230)),
-            ('bicycle', (119, 11, 32))
-    ])
+    for filename in glob.glob('test_img/*.png'):
+        cameraWidth = 1920
+        cameraHeight = 1080
+        cameraMatrix = np.matrix([[1.3878727764994030e+03, 0,    cameraWidth/2],
+        [0,    1.7987055172413220e+03,   cameraHeight/2],
+        [0,    0,    1]])
+        
+        distCoeffs = np.matrix([-5.8881725390917083e-01, 5.8472404395779809e-01,
+        -2.8299599929891900e-01, 0])
+        
+        vidcap = cv2.VideoCapture('testvid.webm')
+        success = True
+        i=0
+        while success:
+            i=i+1
+            success,img = vidcap.read()
+            # print(i)
+            if i%1000 ==0:
+                print(i)
+                print(type(img[0,0,0]))
+                P = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(cameraMatrix,distCoeffs,(cameraWidth,cameraHeight),None)
+                map1, map2 = cv2.fisheye.initUndistortRectifyMap(cameraMatrix, distCoeffs, np.eye(3), P, (1920,1080), cv2.CV_16SC2)
+                img = cv2.remap(img, map1, map2, cv2.INTER_LINEAR)
+                img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+                print(type(img[0,0,0]))
+                img = Image.fromarray(img)
+                # img = img.convert('RGB')
+                # cv2.imshow('',img)
+                # cv2.waitKey(0)
+                # img2 = Image.open(filename).convert('RGB')
+                class_encoding = color_encoding = OrderedDict([
+                        ('unlabeled', (0, 0, 0)),
+                        ('road', (128, 64, 128)),
+                        ('sidewalk', (244, 35, 232)),
+                        ('building', (70, 70, 70)),
+                        ('wall', (102, 102, 156)),
+                        ('fence', (190, 153, 153)),
+                        ('pole', (153, 153, 153)),
+                        ('traffic_light', (250, 170, 30)),
+                        ('traffic_sign', (220, 220, 0)),
+                        ('vegetation', (107, 142, 35)),
+                        ('terrain', (152, 251, 152)),
+                        ('sky', (70, 130, 180)),
+                        ('person', (220, 20, 60)),
+                        ('rider', (255, 0, 0)),
+                        ('car', (0, 0, 142)),
+                        ('truck', (0, 0, 70)),
+                        ('bus', (0, 60, 100)),
+                        ('train', (0, 80, 100)),
+                        ('motorcycle', (0, 0, 230)),
+                        ('bicycle', (119, 11, 32))
+                ])
 
-    num_classes = len(class_encoding)
-    model_path = os.path.join(args.save_dir, args.name)
-    checkpoint = torch.load(model_path)
-    model = ENet(num_classes)
-    model = model.cuda()
-    model.load_state_dict(checkpoint['state_dict'])
-    img = img.resize((600, 360), Image.ANTIALIAS)
-    start = time.time()
-    images = transforms.ToTensor()(img)
-    torch.reshape(images, (1, 3, 360, 600))
-    images= images.unsqueeze(0)
-    with torch.no_grad():
-        images = Variable(images)
-        images = images.cuda()
-        predictions = model(images) 
-        end = time.time()
-        print(int(1/(end - start)),"FPS")
-        _, predictions = torch.max(predictions.data, 1)
-        label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
-        color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
-        end = time.time()
-        print(int(1/(end - start)),"FPS")
-        utils.imshow_batch(images.data.cpu(), color_predictions)
+                num_classes = len(class_encoding)
+                model_path = os.path.join(args.save_dir, args.name)
+                checkpoint = torch.load(model_path)
+                model = ENet(num_classes)
+                model = model.cuda()
+                model.load_state_dict(checkpoint['state_dict'])
+                img = img.resize((640, 360), Image.ANTIALIAS)
+                start = time.time()
+                images = transforms.ToTensor()(img)
+                torch.reshape(images, (1, 3, 640, 360))
+                images= images.unsqueeze(0)
+                # make_dot(model(images), params=dict(model.named_parameters()))
+                with torch.no_grad():
+                    images = images.cuda()
+                    predictions = model(images) 
+                    end = time.time()
+                    print(int(1/(end - start)),"FPS")
+                    _, predictions = torch.max(predictions.data, 1)
+                    label_to_rgb = transforms.Compose([ext_transforms.LongTensorToRGBPIL(class_encoding),transforms.ToTensor()])
+                    color_predictions = utils.batch_transform(predictions.cpu(), label_to_rgb)
+                    end = time.time()
+                    print(int(1/(end - start)),"FPS")
+                    utils.imshow_batch(images.data.cpu(), color_predictions)
+        break
 
 if __name__ == '__main__':
     if args.mode.lower() == 'single':
@@ -354,15 +359,30 @@ if __name__ == '__main__':
         elif args.dataset.lower() == 'cityscapes':
             from data import Cityscapes as dataset
         else:
-            raise RuntimeError("\"{0}\" is not a supported dataset.".format(
-                args.dataset))
+            raise RuntimeError("\"{0}\" is not a supported dataset.".format(args.dataset))
         
-        loaders, w_class, class_encoding = load_dataset(dataset)
+        loaders, w_class, class_encoding, moments = load_dataset(dataset)
         train_loader, val_loader, test_loader = loaders
-        r,g,b = (0.2868990943530191,0.32513792152972293,0.2838975133247744)
-
+        
+        mean,std = moments
+        subtract_mean = False ## todo make command line arg
+        if subtract_mean:
+            train_loader.dataset.transform = transforms.Compose([
+                train_loader.dataset.transform, transforms.Normalize(mean=mean,std=std)
+            ])
+            val_loader.dataset.transform = transforms.Compose([
+                val_loader.dataset.transform, transforms.Normalize(mean=mean,std=std)
+            ])
         if args.mode.lower() in {'train', 'full'}:
-            model = train(train_loader, val_loader, w_class, class_encoding)
+            model,loss,miou = train(train_loader, val_loader, w_class, class_encoding)
+            plt.plot(loss[:10],label="loss")
+            plt.plot(miou[:10],label="miou")
+            plt.legend()
+            plt.xlabel("Epoch")
+            plt.ylabel("loss/accuracy")
+            plt.grid(True)
+            # plt.xticks()
+            plt.show()
             if args.mode.lower() == 'full':
                 test(model, test_loader, w_class, class_encoding)
         elif args.mode.lower() == 'test':

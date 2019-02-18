@@ -24,17 +24,17 @@ def get_arguments():
         "-b",
         type=int,
         default=10,
-        help="The batch size. Default: 4")
+        help="The batch size. Default: 10")
     parser.add_argument(
         "--epochs",
         type=int,
-        default=500,
+        default=200,
         help="Number of training epochs. Default: 300")
     parser.add_argument(
         "--learning-rate",
         "-lr",
         type=float,
-        default=0.0005,
+        default=5e-4,
         help="The learning rate. Default: 5e-4")
     parser.add_argument(
         "--lr-decay",
@@ -51,13 +51,18 @@ def get_arguments():
         "--weight-decay",
         "-wd",
         type=float,
-        default=0.0002,
+        default=2e-4,
         help="L2 regularization factor. Default: 2e-4")
     parser.add_argument(
         "--train_encoder",
         dest='train_encoder',
         action='store_true',
         help="Train the encoder alone.")
+    parser.add_argument(
+        "--train_decoder",
+        dest='train_decoder',
+        action='store_true',
+        help="Train the decoder alone.")
     parser.add_argument(
         "--reset-optimizer",
         dest='reset-optimizer',
@@ -101,7 +106,7 @@ def get_arguments():
     parser.add_argument(
         "--workers",
         type=int,
-        default=4,
+        default=6,
         help="Number of subprocesses to use for data loading. Default: 4")
     parser.add_argument(
         "--print-step",

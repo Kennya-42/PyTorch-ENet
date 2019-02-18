@@ -3,6 +3,8 @@ import torch
 import torchvision
 import matplotlib.pyplot as plt
 import numpy as np
+import torchvision.transforms as transforms
+import utils
 class Train():
     """Performs the training of ``model`` given a training dataset data
     loader, the optimizer, and the loss criterion.
@@ -36,8 +38,11 @@ class Train():
         self.metric.reset()
         self.model.train()
         for step, batch_data in enumerate(self.data_loader):
-            inputs, labels = batch_data                        
-            inputs, labels = Variable(inputs), Variable(labels)
+            inputs, labels = batch_data 
+            # print(inputs.size())                       
+            # inputs, labels = Variable(inputs), Variable(labels)
+            # utils.imshow_batch(inputs, labels)
+
             if self.use_cuda:
                 inputs = inputs.cuda()
                 labels = labels.cuda()

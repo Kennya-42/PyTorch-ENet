@@ -2,7 +2,8 @@ import os
 from collections import OrderedDict
 import torch.utils.data as data
 from . import utils
-
+import torchvision.transforms.functional as TF
+import random
 
 class Cityscapes(data.Dataset):
     """Cityscapes dataset https://www.cityscapes-dataset.com/.
@@ -32,6 +33,12 @@ class Cityscapes(data.Dataset):
     # val_lbl_folder = "combined/val_labels"
     # test_folder = "combined/val"
     # test_lbl_folder = "combined/val_labels"
+    # train_folder = "RIT_only/train"
+    # train_lbl_folder = "RIT_only/train_labels"
+    # val_folder = "RIT_only/val"
+    # val_lbl_folder = "RIT_only/val_labels"
+    # test_folder = "RIT_only/val"
+    # test_lbl_folder = "RIT_only/val_labels"
     # Filters to find the images
     img_extension = '.png'
     lbl_name_filter = 'labelIds'
@@ -42,7 +49,7 @@ class Cityscapes(data.Dataset):
     # The values above are remapped to the following
     new_classes = (0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 3, 4, 5, 0, 0, 0, 6, 0, 7,
                    8, 9, 10, 11, 12, 13, 14, 15, 16, 0, 0, 17, 18, 19, 0)
-    # new_classes = (0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    # new_classes = (0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     #                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 
     color_encoding = OrderedDict([
@@ -139,18 +146,23 @@ class Cityscapes(data.Dataset):
 
         img, label = self.loader(data_path, label_path)
         img = img.convert('RGB')
+        if img.size[0] > 1000:
+            img = img.crop((0,0,2048,840))
+            label = label.crop((0,0,2048,840))
 
         # Remap class labels
         label = utils.remap(label, self.full_classes, self.new_classes)
+        # Random vertical flipping
+        # if random.random() > 0.5:
+        #     img = TF.vflip(img)
+        #     label = TF.vflip(label)
 
         if self.transform is not None:
             img = self.transform(img)
 
         if self.label_transform is not None:
             label = self.label_transform(label)
-        # randVflip = transforms.Compose([transforms.RandomVerticalFlip(p=0.5)])
-        # img = randVflip(img)
-        # label = randVflip(label)
+
         return img, label
 
     def __len__(self):
